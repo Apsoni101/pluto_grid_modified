@@ -378,7 +378,29 @@ class PlutoGridStateManager extends PlutoGridStateChangeNotifier {
 
     return completer.future;
   }
-}
+  // In PlutoGridStateManager class
+  PlutoRow? _hoveredRow;
+
+  void setHoveredRow(PlutoRow row) {
+    if (_hoveredRow != row) {
+      final previousHovered = _hoveredRow;
+      _hoveredRow = row;
+      if (previousHovered != null) {
+        notifyListeners();
+      }
+      notifyListeners();
+    }
+  }
+
+  void clearHoveredRow() {
+    if (_hoveredRow != null) {
+      _hoveredRow = null;
+      notifyListeners();
+    }
+  }
+
+  bool isRowHovered(PlutoRow row) => _hoveredRow == row;
+  }
 
 /// This is a class for handling horizontal and vertical scrolling of columns and rows of [PlutoGrid].
 class PlutoGridScrollController {

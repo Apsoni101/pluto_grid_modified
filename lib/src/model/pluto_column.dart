@@ -25,6 +25,10 @@ class PlutoColumn {
   /// If a titleSpan value is set, the title value is not displayed.
   String title;
 
+  final Widget Function(PlutoCell cell, bool isHovered)? hoverWidgetBuilder;
+
+  final Color? Function(dynamic value)? cellColor;
+
   /// Specifies the field name of the row to be connected to the column.
   String field;
 
@@ -193,6 +197,8 @@ class PlutoColumn {
   bool hide;
 
   PlutoColumn({
+    this.hoverWidgetBuilder,
+    this.cellColor,
     required this.title,
     required this.field,
     required this.type,

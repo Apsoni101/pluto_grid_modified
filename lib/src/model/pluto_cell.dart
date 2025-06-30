@@ -4,13 +4,16 @@ import 'package:pluto_grid/pluto_grid.dart';
 class PlutoCell {
   PlutoCell({
     dynamic value,
+    Widget? widget, // Add widget parameter
     Key? key,
   })  : _key = key ?? UniqueKey(),
-        _value = value;
+        _value = value,
+        _widget = widget; // Initialize widget
 
   final Key _key;
 
   dynamic _value;
+  Widget? _widget; // Add widget field
 
   dynamic _valueForSorting;
 
@@ -60,6 +63,16 @@ class PlutoCell {
     _value = changed;
 
     _valueForSorting = null;
+  }
+  Widget? get widget => _widget;
+
+  set widget(Widget? changed) {
+    if (_widget == changed) {
+      return;
+    }
+    _widget = changed;
+    // You might want to clear value when setting widget or vice versa
+    // depending on your use case
   }
 
   dynamic get valueForSorting {

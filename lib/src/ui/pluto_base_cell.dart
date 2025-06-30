@@ -250,6 +250,19 @@ class _CellContainerState extends PlutoStateWithChange<_CellContainer> {
     required Color? cellColorGroupedRow,
     required PlutoGridSelectingMode selectingMode,
   }) {
+    Color? baseColor;
+    if (widget.column.cellColor != null) {
+      if (widget.column.cellColor is Function) {
+        baseColor = (widget.column.cellColor as Color? Function(
+            dynamic))(widget.cell.value);
+      } else {
+        baseColor = widget.column.cellColor as Color?;
+      }
+    }
+
+    // If no color from column.cellColor, use grouped row color if applicable
+    baseColor ??= isGroupedRowCell ? cellColorGroupedRow : null;
+
     if (isCurrentCell) {
       return BoxDecoration(
         color: _currentCellColor(
@@ -262,30 +275,18 @@ class _CellContainerState extends PlutoStateWithChange<_CellContainer> {
           cellColorInEditState: cellColorInEditState,
           selectingMode: selectingMode,
         ),
-        border: Border.all(
-          color: hasFocus ? activatedBorderColor : inactivatedBorderColor,
-          width: 1,
-        ),
+        border: null,
+
       );
     } else if (isSelectedCell) {
       return BoxDecoration(
         color: activatedColor,
-        border: Border.all(
-          color: hasFocus ? activatedBorderColor : inactivatedBorderColor,
-          width: 1,
-        ),
+        border: null,
       );
     } else {
       return BoxDecoration(
-        color: isGroupedRowCell ? cellColorGroupedRow : null,
-        border: enableCellVerticalBorder
-            ? BorderDirectional(
-                end: BorderSide(
-                  color: borderColor,
-                  width: 1.0,
-                ),
-              )
-            : null,
+        color: baseColor,
+        border: null,
       );
     }
   }
@@ -327,6 +328,7 @@ class _Cell extends PlutoStatefulWidget {
 
 class _CellState extends PlutoStateWithChange<_Cell> {
   bool _showTypedCell = false;
+  bool _isHovered = false;
 
   @override
   PlutoGridStateManager get stateManager => widget.stateManager;
@@ -348,58 +350,73 @@ class _CellState extends PlutoStateWithChange<_Cell> {
 
   @override
   Widget build(BuildContext context) {
-    if (_showTypedCell && widget.column.enableEditingMode == true) {
-      if (widget.column.type.isSelect) {
-        return PlutoSelectCell(
-          stateManager: stateManager,
-          cell: widget.cell,
-          column: widget.column,
-          row: widget.row,
-        );
-      } else if (widget.column.type.isNumber) {
-        return PlutoNumberCell(
-          stateManager: stateManager,
-          cell: widget.cell,
-          column: widget.column,
-          row: widget.row,
-        );
-      } else if (widget.column.type.isDate) {
-        return PlutoDateCell(
-          stateManager: stateManager,
-          cell: widget.cell,
-          column: widget.column,
-          row: widget.row,
-        );
-      } else if (widget.column.type.isTime) {
-        return PlutoTimeCell(
-          stateManager: stateManager,
-          cell: widget.cell,
-          column: widget.column,
-          row: widget.row,
-        );
-      } else if (widget.column.type.isText) {
-        return PlutoTextCell(
-          stateManager: stateManager,
-          cell: widget.cell,
-          column: widget.column,
-          row: widget.row,
-        );
-      } else if (widget.column.type.isCurrency) {
-        return PlutoCurrencyCell(
-          stateManager: stateManager,
-          cell: widget.cell,
-          column: widget.column,
-          row: widget.row,
-        );
-      }
-    }
-
-    return PlutoDefaultCell(
-      cell: widget.cell,
-      column: widget.column,
-      rowIdx: widget.rowIdx,
-      row: widget.row,
-      stateManager: stateManager,
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: Stack(
+        clipBehavior: Clip.none, // Allow children to paint outside the stack
+        children: [
+          if (_showTypedCell && widget.column.enableEditingMode == true)
+            _buildTypedCell()
+          else
+            PlutoDefaultCell(
+              cell: widget.cell,
+              column: widget.column,
+              rowIdx: widget.rowIdx,
+              row: widget.row,
+              stateManager: stateManager,
+            ),
+          if (widget.column.hoverWidgetBuilder != null && _isHovered)
+            widget.column.hoverWidgetBuilder!(widget.cell, _isHovered),
+        ],
+      ),
     );
+  }
+
+  Widget _buildTypedCell() {
+    if (widget.column.type.isSelect) {
+      return PlutoSelectCell(
+        stateManager: stateManager,
+        cell: widget.cell,
+        column: widget.column,
+        row: widget.row,
+      );
+    } else if (widget.column.type.isNumber) {
+      return PlutoNumberCell(
+        stateManager: stateManager,
+        cell: widget.cell,
+        column: widget.column,
+        row: widget.row,
+      );
+    } else if (widget.column.type.isDate) {
+      return PlutoDateCell(
+        stateManager: stateManager,
+        cell: widget.cell,
+        column: widget.column,
+        row: widget.row,
+      );
+    } else if (widget.column.type.isTime) {
+      return PlutoTimeCell(
+        stateManager: stateManager,
+        cell: widget.cell,
+        column: widget.column,
+        row: widget.row,
+      );
+    } else if (widget.column.type.isText) {
+      return PlutoTextCell(
+        stateManager: stateManager,
+        cell: widget.cell,
+        column: widget.column,
+        row: widget.row,
+      );
+    } else if (widget.column.type.isCurrency) {
+      return PlutoCurrencyCell(
+        stateManager: stateManager,
+        cell: widget.cell,
+        column: widget.column,
+        row: widget.row,
+      );
+    }
+    return const SizedBox();
   }
 }

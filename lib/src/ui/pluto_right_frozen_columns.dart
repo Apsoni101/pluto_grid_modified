@@ -87,17 +87,30 @@ class PlutoRightFrozenColumnsState
 
   @override
   Widget build(BuildContext context) {
-    return CustomMultiChildLayout(
-      delegate: MainColumnLayoutDelegate(
-        stateManager: stateManager,
-        columns: _columns,
-        columnGroups: _columnGroups,
-        frozen: PlutoColumnFrozen.end,
-        textDirection: stateManager.textDirection,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: stateManager.configuration.style.gridBackgroundColor,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 4.0,
+            offset: const Offset(0, 2),
+            spreadRadius: 2
+          ),
+        ],
       ),
-      children: _showColumnGroups == true
-          ? _columnGroups.map(_makeColumnGroup).toList(growable: false)
-          : _columns.map(_makeColumn).toList(growable: false),
+      child: CustomMultiChildLayout(
+        delegate: MainColumnLayoutDelegate(
+          stateManager: stateManager,
+          columns: _columns,
+          columnGroups: _columnGroups,
+          frozen: PlutoColumnFrozen.end,
+          textDirection: stateManager.textDirection,
+        ),
+        children: _showColumnGroups == true
+            ? _columnGroups.map(_makeColumnGroup).toList(growable: false)
+            : _columns.map(_makeColumn).toList(growable: false),
+      ),
     );
   }
 }
