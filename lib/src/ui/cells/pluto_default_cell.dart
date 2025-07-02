@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:pluto_grid/pluto_grid.dart';
 
@@ -70,13 +72,13 @@ class _PlutoDefaultCellState extends PlutoStateWithChange<PlutoDefaultCell> {
 
   bool get _showGroupCount =>
       stateManager.enabledRowGroups &&
-      _isExpandableCell &&
-      widget.row.type.isGroup &&
-      stateManager.rowGroupDelegate!.showCount;
+          _isExpandableCell &&
+          widget.row.type.isGroup &&
+          stateManager.rowGroupDelegate!.showCount;
 
   String get _groupCount => _compactCount
       ? stateManager.rowGroupDelegate!
-          .compactNumber(widget.row.type.group.children.length)
+      .compactNumber(widget.row.type.group.children.length)
       : widget.row.type.group.children.length.toString();
 
   bool get _compactCount => stateManager.rowGroupDelegate!.enableCompactCount;
@@ -145,21 +147,21 @@ class _PlutoDefaultCellState extends PlutoStateWithChange<PlutoDefaultCell> {
         onPressed: _isEmptyGroup ? null : _handleToggleExpandedRowGroup,
         icon: _isEmptyGroup
             ? Icon(
-                style.rowGroupEmptyIcon,
-                size: style.iconSize / 2,
-                color: style.iconColor,
-              )
+          style.rowGroupEmptyIcon,
+          size: style.iconSize / 2,
+          color: style.iconColor,
+        )
             : widget.row.type.group.expanded
-                ? Icon(
-                    style.rowGroupExpandedIcon,
-                    size: style.iconSize,
-                    color: style.iconColor,
-                  )
-                : Icon(
-                    style.rowGroupCollapsedIcon,
-                    size: style.iconSize,
-                    color: style.iconColor,
-                  ),
+            ? Icon(
+          style.rowGroupExpandedIcon,
+          size: style.iconSize,
+          color: style.iconColor,
+        )
+            : Icon(
+          style.rowGroupCollapsedIcon,
+          size: style.iconSize,
+          color: style.iconColor,
+        ),
       );
     }
 
@@ -201,15 +203,10 @@ class _PlutoDefaultCellState extends PlutoStateWithChange<PlutoDefaultCell> {
 
 class _RowDragIconWidget extends StatelessWidget {
   final PlutoColumn column;
-
   final PlutoRow row;
-
   final int rowIdx;
-
   final PlutoGridStateManager stateManager;
-
   final Widget dragIcon;
-
   final Widget feedbackWidget;
 
   const _RowDragIconWidget({
@@ -221,91 +218,108 @@ class _RowDragIconWidget extends StatelessWidget {
     required this.feedbackWidget,
   });
 
+  double get rowHeight => stateManager.rowHeight;
+
   List<PlutoRow> get _draggingRows {
     if (stateManager.currentSelectingRows.isEmpty) {
       return [row];
     }
-
     if (stateManager.isSelectedRow(row.key)) {
       return stateManager.currentSelectingRows;
     }
-
-    // In case there are selected rows,
-    // if the dragging row is not included in it,
-    // the selection of rows is invalidated.
     stateManager.clearCurrentSelecting(notify: false);
-
     return [row];
   }
 
-  void _handleOnPointerDown(PointerDownEvent event) {
-    stateManager.setIsDraggingRow(true, notify: false);
-
-    stateManager.setDragRows(_draggingRows);
-  }
-
-  void _handleOnPointerMove(PointerMoveEvent event) {
-    // Do not drag while rows are selected.
-    if (stateManager.isSelecting) {
-      stateManager.setIsDraggingRow(false);
-
-      return;
-    }
-
-    stateManager.eventManager!.addEvent(PlutoGridScrollUpdateEvent(
-      offset: event.position,
-    ));
-
-    int? targetRowIdx = stateManager.getRowIdxByOffset(
-      event.position.dy,
-    );
-
-    stateManager.setDragTargetRowIdx(targetRowIdx);
-  }
-
-  void _handleOnPointerUp(PointerUpEvent event) {
-    stateManager.setIsDraggingRow(false);
-
-    PlutoGridScrollUpdateEvent.stopScroll(
-      stateManager,
-      PlutoGridScrollUpdateDirection.all,
+  Widget _buildRowFeedback() {
+    final style = stateManager.configuration.style;
+    final visibleColumns = stateManager.columns.where((e) => !e.hide).toList();
+    final totalWidth = visibleColumns.fold<double>(0.0, (sum, column) {
+      final columnWidth = column.width ?? 0.0;
+      return sum + columnWidth;
+    });
+    return Container(
+      constraints: BoxConstraints(
+        maxWidth: totalWidth,
+        minWidth: totalWidth,
+      ),
+      height: rowHeight,
+      decoration: BoxDecoration(
+        color: style.gridBackgroundColor,
+        borderRadius: BorderRadius.circular(4),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 10,
+            spreadRadius: 2,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const NeverScrollableScrollPhysics(),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: visibleColumns.map((column) {
+            final cell = row.cells[column.field]!;
+            return SizedBox(
+              width: column.width,
+              height: rowHeight,
+              child: Padding(
+                padding: column.cellPadding ?? style.defaultCellPadding,
+                child: Align(
+                  alignment: column.textAlign.alignmentValue,
+                  child: Text(
+                    cell.value.toString(),
+                    style: style.cellTextStyle.copyWith(
+                      fontWeight: FontWeight.bold,
+                      decoration: TextDecoration.none,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                    softWrap: false,
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final translationX = stateManager.isRTL ? -0.92 : -0.08;
-
-    return Listener(
-      onPointerDown: _handleOnPointerDown,
-      onPointerMove: _handleOnPointerMove,
-      onPointerUp: _handleOnPointerUp,
-      child: Draggable<PlutoRow>(
-        data: row,
-        dragAnchorStrategy: pointerDragAnchorStrategy,
-        feedback: FractionalTranslation(
-          translation: Offset(translationX, -0.5),
-          child: Material(
-            child: PlutoShadowContainer(
-              width: column.width,
-              height: stateManager.rowHeight,
-              backgroundColor:
-                  stateManager.configuration.style.gridBackgroundColor,
-              borderColor:
-                  stateManager.configuration.style.activatedBorderColor,
-              child: Row(
-                children: [
-                  dragIcon,
-                  Expanded(
-                    child: feedbackWidget,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
+    return Draggable<PlutoRow>(
+      data: row,
+      dragAnchorStrategy: (draggable, context, position) {
+        final renderBox = context.findRenderObject() as RenderBox;
+        final localPosition = renderBox.globalToLocal(position);
+        return Offset(localPosition.dx, rowHeight / 2);
+      },
+      feedback: _buildRowFeedback(),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.grab,
         child: dragIcon,
       ),
+      onDragStarted: () {
+        stateManager.setIsDraggingRow(true);
+        stateManager.setDragRows(_draggingRows);
+      },
+      onDragEnd: (details) {
+        stateManager.setIsDraggingRow(false);
+        stateManager.setDragTargetRowIdx(null);
+        stateManager.setDragRows([]);
+      },
+      onDragUpdate: (details) {
+        final offset = details.globalPosition;
+        stateManager.eventManager!.addEvent(PlutoGridScrollUpdateEvent(
+          offset: offset,
+        ));
+        int? targetRowIdx = stateManager.getRowIdxByOffset(offset.dy);
+        stateManager.setDragTargetRowIdx(targetRowIdx);
+      },
     );
   }
 }
@@ -403,16 +417,12 @@ class CheckboxSelectionWidgetState
     );
   }
 }
-
+// In pluto_default_cell.dart, modify the _DefaultCellWidget class:
 class _DefaultCellWidget extends StatelessWidget {
   final PlutoGridStateManager stateManager;
-
   final int rowIdx;
-
   final PlutoRow row;
-
   final PlutoColumn column;
-
   final PlutoCell cell;
 
   const _DefaultCellWidget({
@@ -427,7 +437,6 @@ class _DefaultCellWidget extends StatelessWidget {
     if (!stateManager.enabledRowGroups) {
       return true;
     }
-
     return stateManager.rowGroupDelegate!.isExpandableCell(cell) ||
         stateManager.rowGroupDelegate!.isEditableCell(cell);
   }
@@ -441,7 +450,7 @@ class _DefaultCellWidget extends StatelessWidget {
         stateManager.rowGroupDelegate!.showFirstExpandableIcon &&
         stateManager.rowGroupDelegate!.type.isByColumn) {
       final delegate =
-          stateManager.rowGroupDelegate as PlutoRowGroupByColumnDelegate;
+      stateManager.rowGroupDelegate as PlutoRowGroupByColumnDelegate;
 
       if (row.depth < delegate.columns.length) {
         cellValue = row.cells[delegate.columns[row.depth].field]!.value;
@@ -451,16 +460,27 @@ class _DefaultCellWidget extends StatelessWidget {
     return column.formattedValueForDisplay(cellValue);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    if (column.hasRenderer) {
-      return column.renderer!(PlutoColumnRendererContext(
-        column: column,
-        rowIdx: rowIdx,
-        row: row,
-        cell: cell,
-        stateManager: stateManager,
-      ));
+  Widget _buildMainContent() {
+    if (cell.widget != null && cell.value != null) {
+      return Row(
+        children: [
+          Expanded(
+            child: Text(
+              _text,
+              style: stateManager.configuration.style.cellTextStyle.copyWith(
+                decoration: TextDecoration.none,
+                fontWeight: FontWeight.normal,
+              ),
+              overflow: TextOverflow.ellipsis,
+              textAlign: column.textAlign.value,
+            ),
+          ),
+          const SizedBox(width: 8),
+          cell.widget!,
+        ],
+      );
+    } else if (cell.widget != null) {
+      return cell.widget!;
     }
 
     return Text(
@@ -471,6 +491,41 @@ class _DefaultCellWidget extends StatelessWidget {
       ),
       overflow: TextOverflow.ellipsis,
       textAlign: column.textAlign.value,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Custom renderer takes highest priority
+    if (column.hasRenderer) {
+      return column.renderer!(PlutoColumnRendererContext(
+        column: column,
+        rowIdx: rowIdx,
+        row: row,
+        cell: cell,
+        stateManager: stateManager,
+      ));
+    }
+
+    final mainContent = _buildMainContent();
+
+    return Row(
+      children: [
+        if (column.hasDragHandle)
+          _RowDragIconWidget(
+            column: column,
+            row: row,
+            rowIdx: rowIdx,
+            stateManager: stateManager,
+            dragIcon: Icon(
+              Icons.drag_handle,
+              size: stateManager.configuration.style.iconSize,
+              color: stateManager.configuration.style.iconColor,
+            ),
+            feedbackWidget: mainContent,
+          ),
+        Expanded(child: mainContent),
+      ],
     );
   }
 }

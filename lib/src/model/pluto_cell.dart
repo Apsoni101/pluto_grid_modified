@@ -117,11 +117,11 @@ class PlutoCell {
 
 _assertUnInitializedCell(bool flag) {
   assert(
-    flag,
-    'PlutoCell is not initialized.'
-    'When adding a column or row, if it is not added through PlutoGridStateManager, '
-    'PlutoCell does not set the necessary information at runtime.'
-    'If you add a column or row through PlutoGridStateManager and this error occurs, '
-    'please contact Github issue.',
+  flag,
+  'PlutoCell is not initialized.'
+      'When adding a column or row, if it is not added through PlutoGridStateManager, '
+      'PlutoCell does not set the necessary information at runtime.'
+      'If you add a column or row through PlutoGridStateManager and this error occurs, '
+      'please contact Github issue.',
   );
 }

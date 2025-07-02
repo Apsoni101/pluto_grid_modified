@@ -25,6 +25,9 @@ class PlutoColumn {
   /// If a titleSpan value is set, the title value is not displayed.
   String title;
 
+  final bool hasDragHandle;
+
+
   final Widget Function(PlutoCell cell, bool isHovered)? hoverWidgetBuilder;
 
   final Color? Function(dynamic value)? cellColor;
@@ -197,6 +200,7 @@ class PlutoColumn {
   bool hide;
 
   PlutoColumn({
+    this.hasDragHandle = false,
     this.hoverWidgetBuilder,
     this.cellColor,
     required this.title,

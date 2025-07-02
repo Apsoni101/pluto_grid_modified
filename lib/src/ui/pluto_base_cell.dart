@@ -2,17 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:pluto_grid/pluto_grid.dart';
 
 import 'ui.dart';
-
 class PlutoBaseCell extends StatelessWidget
     implements PlutoVisibilityLayoutChild {
   final PlutoCell cell;
-
   final PlutoColumn column;
-
   final int rowIdx;
-
   final PlutoRow row;
-
   final PlutoGridStateManager stateManager;
 
   const PlutoBaseCell({
@@ -106,13 +101,11 @@ class PlutoBaseCell extends StatelessWidget
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      behavior: HitTestBehavior.translucent,
-      // Essential gestures.
+      behavior: HitTestBehavior.translucent, // This is correct
       onTapUp: _handleOnTapUp,
       onLongPressStart: _handleOnLongPressStart,
       onLongPressMoveUpdate: _handleOnLongPressMoveUpdate,
       onLongPressEnd: _handleOnLongPressEnd,
-      // Optional gestures.
       onDoubleTap: _onDoubleTapOrNull(),
       onSecondaryTapDown: _onSecondaryTapOrNull(),
       child: _CellContainer(
@@ -134,6 +127,7 @@ class PlutoBaseCell extends StatelessWidget
     );
   }
 }
+
 
 class _CellContainer extends PlutoStatefulWidget {
   final PlutoCell cell;
