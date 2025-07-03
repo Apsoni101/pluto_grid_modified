@@ -8,6 +8,9 @@ class PlutoRow {
     this.sortIdx = 0,
     bool checked = false,
     Key? key,
+    this.menuChildren,
+    this.menuAnchorChildBuilder,
+    this.enableRowMenu = false,
   })  : type = type ?? PlutoRowTypeNormal.instance,
         _checked = checked,
         _state = PlutoRowState.none,
@@ -28,6 +31,15 @@ class PlutoRow {
   PlutoRow? _parent;
 
   PlutoRowState _state;
+
+  /// List of menu items to display when hovering over the row
+  final List<Widget>? menuChildren;
+
+  /// Custom builder for the menu anchor
+  final MenuAnchorChildBuilder? menuAnchorChildBuilder;
+
+  /// Whether to enable the row menu functionality
+  final bool enableRowMenu;
 
   Key get key => _key;
 
@@ -115,6 +127,9 @@ class PlutoRow {
   /// Make sure it stays in the list unless you change the filtering again.
   PlutoRowState get state => _state;
 
+  /// Returns true if the row has menu functionality enabled and menu items are available
+  bool get hasMenu => enableRowMenu && menuChildren != null && menuChildren!.isNotEmpty;
+
   void setParent(PlutoRow? row) {
     _parent = row;
   }
@@ -130,6 +145,24 @@ class PlutoRow {
 
   void setState(PlutoRowState state) {
     _state = state;
+  }
+
+  /// Create a copy of this row with updated menu configuration
+  PlutoRow copyWithMenu({
+    List<Widget>? menuChildren,
+    MenuAnchorChildBuilder? menuAnchorChildBuilder,
+    bool? enableRowMenu,
+  }) {
+    return PlutoRow(
+      cells: cells,
+      type: type,
+      sortIdx: sortIdx,
+      checked: _checked ?? false,
+      key: _key,
+      menuChildren: menuChildren ?? this.menuChildren,
+      menuAnchorChildBuilder: menuAnchorChildBuilder ?? this.menuAnchorChildBuilder,
+      enableRowMenu: enableRowMenu ?? this.enableRowMenu,
+    );
   }
 
   /// Create PlutoRow in json type.
@@ -170,9 +203,12 @@ class PlutoRow {
   /// final rowGroup = PlutoRow.fromJson(json, childrenField: 'children');
   /// ```
   factory PlutoRow.fromJson(
-    Map<String, dynamic> json, {
-    String? childrenField,
-  }) {
+      Map<String, dynamic> json, {
+        String? childrenField,
+        List<Widget>? menuChildren,
+        MenuAnchorChildBuilder? menuAnchorChildBuilder,
+        bool enableRowMenu = false,
+      }) {
     final Map<String, PlutoCell> cells = {};
 
     final bool hasChildren =
@@ -196,13 +232,25 @@ class PlutoRow {
       final children = <PlutoRow>[];
 
       for (final child in json[childrenField]) {
-        children.add(PlutoRow.fromJson(child, childrenField: childrenField));
+        children.add(PlutoRow.fromJson(
+          child,
+          childrenField: childrenField,
+          menuChildren: menuChildren,
+          menuAnchorChildBuilder: menuAnchorChildBuilder,
+          enableRowMenu: enableRowMenu,
+        ));
       }
 
       type = PlutoRowType.group(children: FilteredList(initialList: children));
     }
 
-    return PlutoRow(cells: cells, type: type);
+    return PlutoRow(
+      cells: cells,
+      type: type,
+      menuChildren: menuChildren,
+      menuAnchorChildBuilder: menuAnchorChildBuilder,
+      enableRowMenu: enableRowMenu,
+    );
   }
 
   /// Convert the row to json type.
@@ -286,7 +334,7 @@ class PlutoRow {
     final List<Map<String, dynamic>> children = type.group.children
         .map(
           (e) => e.toJson(childrenField: childrenField),
-        )
+    )
         .toList();
 
     json[childrenField] = children;

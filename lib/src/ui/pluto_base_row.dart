@@ -20,11 +20,24 @@ class PlutoBaseRow extends StatelessWidget {
     super.key,
   });
 
+  /// Helper method to calculate the offset of the first cell
+  Offset _calculateConsistentMenuOffset() {
+    final frozenWidth = columns
+        .where((col) => col.frozen.isStart && !col.hide)
+        .fold<double>(0.0, (sum, col) => sum + col.width);
+    final verticalOffset = -stateManager.rowHeight;
+
+    return Offset(
+      frozenWidth,
+      verticalOffset,
+    );
+  }
+
   bool _checkSameDragRows(PlutoRow draggingRow) {
     final List<PlutoRow> selectedRows =
-    stateManager.currentSelectingRows.isNotEmpty
-        ? stateManager.currentSelectingRows
-        : [draggingRow];
+        stateManager.currentSelectingRows.isNotEmpty
+            ? stateManager.currentSelectingRows
+            : [draggingRow];
 
     final end = rowIdx + selectedRows.length;
 
@@ -72,22 +85,15 @@ class PlutoBaseRow extends StatelessWidget {
     );
   }
 
-
-
-
-
   @override
   Widget build(BuildContext context) {
-    return DragTarget<PlutoRow>(
+    final dragTarget = DragTarget<PlutoRow>(
       onWillAcceptWithDetails: _handleOnWillAccept,
       onAcceptWithDetails: _handleOnAccept,
       onMove: (details) {
         final offset = details.offset;
         final renderBox = context.findRenderObject() as RenderBox;
         final localPosition = renderBox.globalToLocal(offset);
-        // Add debug output to check positions
-        debugPrint('Local position: $localPosition');
-        debugPrint('RenderBox size: ${renderBox.size}');
         final isTopHalf = localPosition.dy < renderBox.size.height / 2;
 
         stateManager.setDragTargetRowIdx(
@@ -104,31 +110,111 @@ class PlutoBaseRow extends StatelessWidget {
           rowIdx: rowIdx,
           row: row,
           enableRowColorAnimation:
-          stateManager.configuration.style.enableRowColorAnimation,
+              stateManager.configuration.style.enableRowColorAnimation,
           key: ValueKey('rowContainer_${row.key}'),
           child: visibilityLayout
               ? PlutoVisibilityLayout(
-            key: ValueKey('rowContainer_${row.key}_row'),
-            delegate: _RowCellsLayoutDelegate(
-              stateManager: stateManager,
-              columns: columns,
-              textDirection: stateManager.textDirection,
-            ),
-            scrollController: stateManager.scroll.bodyRowsHorizontal!,
-            initialViewportDimension: MediaQuery.of(context).size.width,
-            children: columns.map(_makeCell).toList(growable: false),
-          )
+                  key: ValueKey('rowContainer_${row.key}_row'),
+                  delegate: _RowCellsLayoutDelegate(
+                    stateManager: stateManager,
+                    columns: columns,
+                    textDirection: stateManager.textDirection,
+                  ),
+                  scrollController: stateManager.scroll.bodyRowsHorizontal!,
+                  initialViewportDimension: MediaQuery.of(context).size.width,
+                  children: columns.map(_makeCell).toList(growable: false),
+                )
               : CustomMultiChildLayout(
-            key: ValueKey('rowContainer_${row.key}_row'),
-            delegate: _RowCellsLayoutDelegate(
-              stateManager: stateManager,
-              columns: columns,
-              textDirection: stateManager.textDirection,
-            ),
-            children: columns.map(_makeCell).toList(growable: false),
-          ),
+                  key: ValueKey('rowContainer_${row.key}_row'),
+                  delegate: _RowCellsLayoutDelegate(
+                    stateManager: stateManager,
+                    columns: columns,
+                    textDirection: stateManager.textDirection,
+                  ),
+                  children: columns.map(_makeCell).toList(growable: false),
+                ),
         );
       },
+    );
+
+    if (row.hasMenu) {
+      return _RowMenuWrapper(
+        row: row,
+        stateManager: stateManager,
+        dragTarget: dragTarget,
+        menuOffset: _calculateConsistentMenuOffset(),
+        menuChildren: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: row.menuChildren!.map((menuItem) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: menuItem,
+            );
+          }).toList(),
+        ),
+      );
+    }
+    return dragTarget;
+  }
+}
+
+class _RowMenuWrapper extends StatefulWidget {
+  final PlutoRow row;
+  final PlutoGridStateManager stateManager;
+  final Widget dragTarget;
+  final Offset menuOffset;
+  final Widget menuChildren;
+
+  const _RowMenuWrapper({
+    required this.row,
+    required this.stateManager,
+    required this.dragTarget,
+    required this.menuOffset,
+    required this.menuChildren,
+  });
+
+  @override
+  State<_RowMenuWrapper> createState() => _RowMenuWrapperState();
+}
+
+class _RowMenuWrapperState extends State<_RowMenuWrapper> {
+  final _menuController = MenuController();
+  bool _isHovered = false;
+  bool _menuWasOpen = false;
+
+  @override
+  void dispose() {
+    _menuController.close();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isHovered = widget.stateManager.isRowHovered(widget.row);
+
+    if (isHovered != _isHovered) {
+      _isHovered = isHovered;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_isHovered && !_menuController.isOpen) {
+          _menuController.open();
+          _menuWasOpen = true;
+        } else if (!_isHovered && _menuWasOpen) {
+          _menuController.close();
+          _menuWasOpen = false;
+        }
+      });
+    }
+
+    return MenuAnchor(
+      controller: _menuController,
+      menuChildren: [
+        MouseRegion(
+          onEnter: (_) => widget.stateManager.setHoveredRow(widget.row),
+          child: widget.menuChildren,
+        ),
+      ],
+      alignmentOffset: widget.menuOffset,
+      child: widget.dragTarget,
     );
   }
 }
@@ -148,7 +234,7 @@ class _RowCellsLayoutDelegate extends MultiChildLayoutDelegate {
   Size getSize(BoxConstraints constraints) {
     final double width = columns.fold(
       0,
-          (previousValue, element) => previousValue + element.width,
+      (previousValue, element) => previousValue + element.width,
     );
     return Size(width, stateManager.rowHeight);
   }
@@ -208,7 +294,9 @@ class _RowContainerWidget extends PlutoStatefulWidget {
 }
 
 class _RowContainerWidgetState extends PlutoStateWithChange<_RowContainerWidget>
-    with AutomaticKeepAliveClientMixin, PlutoStateWithKeepAlive<_RowContainerWidget> {
+    with
+        AutomaticKeepAliveClientMixin,
+        PlutoStateWithKeepAlive<_RowContainerWidget> {
   @override
   void dispose() {
     if (widget.stateManager.isRowHovered(widget.row)) {
@@ -304,7 +392,7 @@ class _RowContainerWidgetState extends PlutoStateWithChange<_RowContainerWidget>
     final bool isSelecting = stateManager.isSelecting;
     final bool isCheckedRow = widget.row.checked == true;
     final alreadyTarget = stateManager.dragRows
-        .firstWhereOrNull((element) => element.key == widget.row.key) !=
+            .firstWhereOrNull((element) => element.key == widget.row.key) !=
         null;
     final isDraggingRow = stateManager.isDraggingRow;
     final bool isDragTarget = isDraggingRow &&
@@ -329,40 +417,46 @@ class _RowContainerWidgetState extends PlutoStateWithChange<_RowContainerWidget>
     final bool isSelectedRow = stateManager.selectingMode.isRow &&
         stateManager.isSelectedRow(widget.row.key);
     final bool showSelectedBorder = stateManager
-        .configuration.style.enableSelectedRowBorder &&
+            .configuration.style.enableSelectedRowBorder &&
         (isSelectedRow || (isCurrentRow && !stateManager.selectingMode.isRow));
 
-    final BorderSide topBorder = isTopDragTarget
+    // Default borders (non-drag state)
+    BorderSide topBorder = showSelectedBorder
         ? BorderSide(
-      width: stateManager.configuration.style.dragTargetIndicatorThickness,
-      color: stateManager.configuration.style.dragTargetIndicatorColor,
-    )
-        : showSelectedBorder
-        ? BorderSide(
-      width: PlutoGridSettings.rowBorderWidth,
-      color: stateManager.configuration.style.selectedRowBorderColor,
-    )
+            width: PlutoGridSettings.rowBorderWidth,
+            color: stateManager.configuration.style.selectedRowBorderColor,
+          )
         : BorderSide.none;
 
-    final BorderSide bottomBorder = isBottomDragTarget
+    BorderSide bottomBorder = stateManager
+            .configuration.style.enableCellBorderHorizontal
         ? BorderSide(
-      width: stateManager.configuration.style.dragTargetIndicatorThickness,
-      color: stateManager.configuration.style.dragTargetIndicatorColor,
-    )
-        : stateManager.configuration.style.enableCellBorderHorizontal
-        ? BorderSide(
-      width: PlutoGridSettings.rowBorderWidth,
-      color: showSelectedBorder
-          ? stateManager.configuration.style.selectedRowBorderColor
-          : stateManager.configuration.style.borderColor,
-    )
+            width: PlutoGridSettings.rowBorderWidth,
+            color: showSelectedBorder
+                ? stateManager.configuration.style.selectedRowBorderColor
+                : stateManager.configuration.style.borderColor,
+          )
         : showSelectedBorder
-        ? BorderSide(
-      width: PlutoGridSettings.rowBorderWidth,
-      color:
-      stateManager.configuration.style.selectedRowBorderColor,
-    )
-        : BorderSide.none;
+            ? BorderSide(
+                width: PlutoGridSettings.rowBorderWidth,
+                color: stateManager.configuration.style.selectedRowBorderColor,
+              )
+            : BorderSide.none;
+
+    if (isDragTarget) {
+      if (isTopDragTarget) {
+        topBorder = BorderSide(
+          width: stateManager.configuration.style.dragTargetIndicatorThickness,
+          color: stateManager.configuration.style.dragTargetIndicatorColor,
+        );
+      }
+      if (isBottomDragTarget) {
+        bottomBorder = BorderSide(
+          width: stateManager.configuration.style.dragTargetIndicatorThickness,
+          color: stateManager.configuration.style.dragTargetIndicatorColor,
+        );
+      }
+    }
 
     return BoxDecoration(
       color: rowColor,
@@ -376,7 +470,6 @@ class _RowContainerWidgetState extends PlutoStateWithChange<_RowContainerWidget>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final style = stateManager.configuration.style;
 
     return MouseRegion(
       onEnter: (_) {
@@ -389,29 +482,10 @@ class _RowContainerWidgetState extends PlutoStateWithChange<_RowContainerWidget>
           widget.stateManager.clearHoveredRow();
         }
       },
-      child: Stack(
-        children: [
-          _AnimatedOrNormalContainer(
-            enable: widget.enableRowColorAnimation,
-            decoration: _getBoxDecoration(),
-            child: widget.child,
-          ),
-          if (stateManager.isRowIdxDragTarget(widget.rowIdx))
-            Positioned(
-              left: style.dragTargetIndicatorPadding.left,
-              right: style.dragTargetIndicatorPadding.right,
-              top: stateManager.isRowIdxTopDragTarget(widget.rowIdx)
-                  ? style.dragTargetIndicatorPadding.top
-                  : null,
-              bottom: stateManager.isRowIdxBottomDragTarget(widget.rowIdx)
-                  ? style.dragTargetIndicatorPadding.bottom
-                  : null,
-              child: Container(
-                height: style.dragTargetIndicatorThickness,
-                color: style.dragTargetIndicatorColor,
-              ),
-            ),
-        ],
+      child: _AnimatedOrNormalContainer(
+        enable: widget.enableRowColorAnimation,
+        decoration: _getBoxDecoration(),
+        child: widget.child,
       ),
     );
   }
@@ -432,10 +506,10 @@ class _AnimatedOrNormalContainer extends StatelessWidget {
   Widget build(BuildContext context) {
     return enable
         ? AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      decoration: decoration,
-      child: child,
-    )
+            duration: const Duration(milliseconds: 300),
+            decoration: decoration,
+            child: child,
+          )
         : DecoratedBox(decoration: decoration, child: child);
   }
 }

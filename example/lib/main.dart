@@ -31,16 +31,14 @@ class _PlutoGridWatchlistPageState extends State<PlutoGridWatchlistPage> {
     PlutoColumn(
       title: 'Symbol',
       field: 'symbol',
-      enableRowDrag: true,
-      enableColumnDrag: true,
       type: PlutoColumnType.text(),
       frozen: PlutoColumnFrozen.start,
+      enableRowDrag: true,
     ),
     PlutoColumn(
       title: 'Company',
       field: 'company',
       type: PlutoColumnType.text(),
-      frozen: PlutoColumnFrozen.start,
     ),
     PlutoColumn(
         title: 'Bid qty', field: 'bid_qty', type: PlutoColumnType.number()),
@@ -70,7 +68,7 @@ class _PlutoGridWatchlistPageState extends State<PlutoGridWatchlistPage> {
         field: 'ltp',
         type: PlutoColumnType.currency(),
         cellColor: (value) {
-          if (value is num && value > 0) return Colors.green[800];
+          if (value is num && value > 0) return Colors.lightGreen[800];
           if (value is num && value < 0) return Colors.red[800];
           return null;
         }),
@@ -79,7 +77,7 @@ class _PlutoGridWatchlistPageState extends State<PlutoGridWatchlistPage> {
       field: 'change',
       type: PlutoColumnType.text(),
       cellColor: (value) {
-        if ((value as String).contains('+')) return Colors.green[900];
+        if ((value as String).contains('+')) return Colors.lightGreen[900];
         if (value.contains('-')) return Colors.red[900];
         return null;
       },
@@ -87,21 +85,36 @@ class _PlutoGridWatchlistPageState extends State<PlutoGridWatchlistPage> {
   ];
 
   final List<PlutoRow> rows = [
+    PlutoRow(
+      cells: {
+        'symbol': PlutoCell(value: 'TATACOMM'),
+        'company': PlutoCell(value: 'Tata Communications'),
+        'bid_qty': PlutoCell(value: 47),
+        'bid_rate': PlutoCell(value: 1673.5),
+        'ask_qty': PlutoCell(value: 6),
+        'ask_rate': PlutoCell(value: 1674.7),
+        'volume': PlutoCell(value: 125000),
+        'high_52w': PlutoCell(value: 1850.0),
+        'low_52w': PlutoCell(value: 1200.0),
+        'ltp': PlutoCell(value: 1680.8),
+        'change': PlutoCell(value: '+2.30 (+0.14%)'),
+      },
+      enableRowMenu: true,
+      menuChildren: [
+        IconButton(
+          onPressed: () => print('Edit John Doe'),
+          icon: Icon(Icons.edit),
+        ), IconButton(
+          onPressed: () => print('Edit John Doe'),
+          icon: Icon(Icons.edit),
+        ),
+
+      ],
+    ),
     PlutoRow(cells: {
-      'symbol': PlutoCell(value: 'TATACOMM'),
-      'company': PlutoCell(value: 'Tata Communications'),
-      'bid_qty': PlutoCell(value: 47),
-      'bid_rate': PlutoCell(value: 1673.5),
-      'ask_qty': PlutoCell(value: 6),
-      'ask_rate': PlutoCell(value: 1674.7),
-      'volume': PlutoCell(value: 125000),
-      'high_52w': PlutoCell(value: 1850.0),
-      'low_52w': PlutoCell(value: 1200.0),
-      'ltp': PlutoCell(value: 1680.8),
-      'change': PlutoCell(value: '+2.30 (+0.14%)'),
-    }),
-    PlutoRow(cells: {
-      'symbol': PlutoCell(value: 'BIRLACORPN'),
+      'symbol': PlutoCell(
+        value: 'BIRLACORPN',
+      ),
       'company': PlutoCell(
         value: 'Birla Corporation',
       ),
@@ -402,9 +415,10 @@ class _PlutoGridWatchlistPageState extends State<PlutoGridWatchlistPage> {
             configuration: const PlutoGridConfiguration(
               enableRowHoverColor: true,
               style: PlutoGridStyleConfig.dark(
-                rowHoverColor: Color(0xFF2A2A2A),
+                dragTargetIndicatorColor: Colors.white,
+                dragTargetIndicatorThickness: 1,
+                rowHoverColor: Colors.blue, // Or any visible color
               ),
-              enableMoveHorizontalInEditing: true,
             ),
           ),
         ),
